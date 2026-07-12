@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rejection Collection</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Customizing Tailwind to match your specific dark-themed branding
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        dark: { 900: '#111827', 800: '#1F2937', 700: '#374151' },
+                        purple: { 600: '#7E22CE', 500: '#9333EA', 100: '#F3E8FF' }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+
+    <style>
+        body { background-color: #0F172A; }
+        .fade-in { animation: fadeIn 0.4s ease-in-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="font-sans text-gray-200 min-h-screen">
+
+    <nav class="bg-dark-800 shadow-sm border-b border-dark-700 px-6 py-4">
+        <div class="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-2 text-xl font-bold text-purple-500">
+                <i data-lucide="target" class="w-6 h-6"></i>
+                <span>Rejection Collection</span>
+            </div>
+            <div class="flex gap-2 bg-dark-900 p-1 rounded-lg">
+                <button onclick="switchTab('dashboard')" id="btn-dashboard" class="px-4 py-2 rounded-md flex items-center gap-2 text-sm font-medium transition-colors bg-dark-700 shadow-sm text-purple-400">
+                    <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Dashboard
+                </button>
+                <button onclick="switchTab('list')" id="btn-list" class="px-4 py-2 rounded-md flex items-center gap-2 text-sm font-medium transition-colors text-gray-400 hover:text-white">
+                    <i data-lucide="briefcase" class="w-4 h-4"></i> Applications
+                </button>
+                <button onclick="switchTab('add')" id="btn-add" class="px-4 py-2 rounded-md flex items-center gap-2 text-sm font-medium transition-colors text-gray-400 hover:text-white">
+                    <i data-lucide="plus-circle" class="w-4 h-4"></i> Add New
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main id="app-content" class="max-w-6xl mx-auto p-6 mt-4">
+    </main>
+
+    <script>
+        // State Management
+        let activeTab = 'dashboard';
+        let applications = [
+            { id: 1, role: 'Frontend Developer', company: 'TechCorp', employmentType: 'Full time', distanceMiles: 8, qualScore: 8, intScore: 9, status: 'Applied', reachedInterview: false },
+            { id: 2, role: 'UX Designer', company: 'Creative Co.', employmentType: 'Part time', distanceMiles: 3.5, qualScore: 7, intScore: 10, status: 'Interviewing', reachedInterview: true },
+            { id: 3, role: 'Product Manager', company: 'Innovate Inc.', employmentType: 'Full time', distanceMiles: 14, qualScore: 6, intScore: 8, status: 'Rejected', reachedInterview: false }
+        ];
+
+        // UI Configuration Mapping
+        const statusColors = {
+            'Applied': 'bg-blue-900/30 text-blue-300 border-blue-800',
+            'Interviewing': 'bg-amber-900/30 text-amber-300 border-amber-800',
+            'Job Offer': 'bg-emerald-900/30 text-emerald-300 border-emerald-800',
+            'Rejected': 'bg-red-900/30 text-red-300 border-red-800',
+            'Withdrawal': 'bg-gray-800 text-gray-400 border-gray-700'
+        };
+
+        // Core Logic: Compatibility Calculation
+        function calculateCompatibility(qual, int) {
+            return Math.round(((parseInt(qual) + parseInt(int)) / 20) * 100);
+        }
+
+        // Navigation Logic
+        function switchTab(tab) {
+            activeTab = tab;
+            // Updates button styles to show active state
+            ['dashboard', 'list', 'add'].forEach(t => {
+                const btn = document.getElementById(`btn-${t}`);
+                btn.className = (t === tab) 
+                    ? 'px-4 py-2 rounded-md flex items-center gap-2 text-sm font-medium transition-colors bg-dark-700 shadow-sm text-purple-400'
+                    : 'px-4 py-2 rounded-md flex items-center gap-2 text-sm font-medium transition-colors text-gray-400 hover:text-white';
+            });
+            renderApp();
+        }
+
+        // Data Manipulation Functions
+        function deleteApplication(id) {
+            applications = applications.filter(app => app.id !== id);
+            renderApp();
+        }
+
+        function updateStatus(id, newStatus) {
+            applications = applications.map(app => app.id === id ? {
+                ...app,
+                status: newStatus,
+                reachedInterview: app.reachedInterview || newStatus === 'Interviewing' || newStatus === 'Job Offer'
+            } : app);
+            renderApp();
+        }
+
+        function getStatusActions(app) {
+            if (app.status === 'Applied') {
+                return [
+                    { label: 'Start interview', status: 'Interviewing', icon: 'calendar-check', classes: 'bg-amber-500/15 text-amber-300 border-amber-700 hover:bg-amber-500/25' },
+                    { label: 'Rejected', status: 'Rejected', icon: 'x-circle', classes: 'bg-red-500/10 text-red-300 border-red-900 hover:bg-red-500/20' },
+                    { label: 'Withdraw', status: 'Withdrawal', icon: 'log-out', classes: 'bg-gray-500/10 text-gray-300 border-gray-700 hover:bg-gray-500/20' }
+                ];
+            }
+
+            if (app.status === 'Interviewing') {
+                return [
+                    { label: 'Job offer', status: 'Job Offer', icon: 'party-popper', classes: 'bg-emerald-500/15 text-emerald-300 border-emerald-800 hover:bg-emerald-500/25' },
+                    { label: 'Rejected', status: 'Rejected', icon: 'x-circle', classes: 'bg-red-500/10 text-red-300 border-red-900 hover:bg-red-500/20' },
+                    { label: 'Withdraw', status: 'Withdrawal', icon: 'log-out', classes: 'bg-gray-500/10 text-gray-300 border-gray-700 hover:bg-gray-500/20' }
+                ];
+            }
+
+            return [];
+        }
+
+        function handleAddJob(event) {
+            event.preventDefault();
+            const form = event.target;
+            const newApp = {
+                id: Date.now(),
+                role: form.role.value,
+                company: form.company.value,
+                employmentType: form.employmentType.value,
+                distanceMiles: parseFloat(form.distanceMiles.value),
+                qualScore: parseInt(form.qualScore.value),
+                intScore: parseInt(form.intScore.value),
+                status: form.status.value,
+                reachedInterview: form.status.value === 'Interviewing'
+            };
+            applications.unshift(newApp);
+            switchTab('list');
+        }
+
+        // Google Chart Initialization
+        google.charts.load('current', {'packages':['sankey']});
+        google.charts.setOnLoadCallback(() => { if (activeTab === 'dashboard') drawChart(); });
+
+        function drawChart() {
+            const container = document.getElementById('sankey_diagram');
+            if (!container || applications.length === 0) return;
+
+            const data = new google.visualization.DataTable();
+            data.addColumn('string', 'From');
+            data.addColumn('string', 'To');
+            data.addColumn('number', 'Weight');
+
+            const applied = applications.filter(a => a.status === 'Applied').length;
+            const interviewing = applications.filter(a => a.status === 'Interviewing').length;
+            const offer = applications.filter(a => a.status === 'Job Offer').length;
+            const rejectedBeforeInterview = applications.filter(a => a.status === 'Rejected' && !a.reachedInterview).length;
+            const rejectedAfterInterview = applications.filter(a => a.status === 'Rejected' && a.reachedInterview).length;
+            const withdrawnBeforeInterview = applications.filter(a => a.status === 'Withdrawal' && !a.reachedInterview).length;
+            const withdrawnAfterInterview = applications.filter(a => a.status === 'Withdrawal' && a.reachedInterview).length;
+
+            const interviewStage = interviewing + offer + rejectedAfterInterview + withdrawnAfterInterview;
+            const rows = [];
+            
+            if (applied > 0) rows.push(['Total Applications', 'Awaiting Response', applied]);
+            if (interviewStage > 0) rows.push(['Total Applications', 'Interview Stage', interviewStage]);
+            if (rejectedBeforeInterview > 0) rows.push(['Total Applications', 'Rejected', rejectedBeforeInterview]);
+            if (withdrawnBeforeInterview > 0) rows.push(['Total Applications', 'Withdrawn', withdrawnBeforeInterview]);
+            if (interviewing > 0) rows.push(['Interview Stage', 'Currently Interviewing', interviewing]);
+            if (offer > 0) rows.push(['Interview Stage', 'Job Offers', offer]);
+            if (rejectedAfterInterview > 0) rows.push(['Interview Stage', 'Rejected After Interview', rejectedAfterInterview]);
+            if (withdrawnAfterInterview > 0) rows.push(['Interview Stage', 'Withdrew After Interview', withdrawnAfterInterview]);
+
+            data.addRows(rows);
+
+            const options = {
+                width: '100%', height: 400,
+                sankey: {
+                    node: {
+                        colors: ['#8b5cf6', '#3b82f6', '#f59e0b', '#ef4444', '#6b7280', '#10b981'],
+                        label: { fontSize: 14, color: '#e5e7eb', bold: true }
+                    },
+                    link: { colorMode: 'gradient', fillOpacity: 0.6 }
+                }
+            };
+            new google.visualization.Sankey(container).draw(data, options);
+        }
+
+        // UI Rendering Components
+        function renderDashboard() {
+            const interviewing = applications.filter(a => a.status === 'Interviewing').length;
+            const offers = applications.filter(a => a.status === 'Job Offer').length;
+            const avgComp = applications.length > 0 
+                ? Math.round(applications.reduce((acc, curr) => acc + calculateCompatibility(curr.qualScore, curr.intScore), 0) / applications.length)
+                : 0;
+
+            return `
+                <div class="space-y-6 fade-in">
+                    <div class="bg-purple-900/20 border border-purple-500/30 p-4 rounded-lg">
+                        <h4 class="font-bold text-purple-200">How to use this tracker:</h4>
+                        <p class="text-sm text-purple-300">This dashboard helps you visualize your job search funnel. Your match combines two ratings: qualifications reflect how your experience, education, certifications, and skills line up with the job, while interest reflects the work itself, its hours, and how much the opportunity interests you. Use the 'Applications' tab to update statuses as you hear back.</p>
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        ${[{label: 'Total', val: applications.length, color: 'text-white'}, {label: 'Interviewing', val: interviewing, color: 'text-amber-400'}, {label: 'Offers', val: offers, color: 'text-emerald-400'}, {label: 'Match', val: avgComp + '%', color: 'text-purple-400'}].map(stat => `
+                            <div class="bg-dark-800 p-4 rounded-xl shadow-sm border border-dark-700">
+                                <p class="text-xs text-gray-400 uppercase tracking-wider">${stat.label}</p>
+                                <p class="text-3xl font-bold ${stat.color}">${stat.val}</p>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="bg-dark-800 p-6 rounded-xl shadow-sm border border-dark-700">
+                        <h3 class="text-lg font-semibold text-white mb-4">Application Flow</h3>
+                        <div id="sankey_diagram" class="w-full h-[400px]"></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderList() {
+            return `
+                <div class="space-y-4 fade-in">
+                    <h2 class="text-2xl font-bold text-white mb-6">Your Applications</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        ${applications.map(app => {
+                            const comp = calculateCompatibility(app.qualScore, app.intScore);
+                            const actions = getStatusActions(app);
+                            return `
+                                <div class="bg-dark-800 p-5 rounded-xl border border-dark-700">
+                                    <div class="flex justify-between items-start mb-2">
+                                        <h3 class="font-bold text-white">${app.role}</h3>
+                                        <span class="px-2 py-0.5 text-[10px] font-bold uppercase rounded border ${statusColors[app.status]}">${app.status}</span>
+                                    </div>
+                                    <p class="text-sm text-gray-400 mb-3">${app.company}</p>
+                                    <div class="flex flex-wrap gap-2 mb-4 text-xs text-gray-300">
+                                        <span class="inline-flex items-center gap-1.5 rounded-full border border-dark-700 bg-dark-900 px-2.5 py-1">
+                                            <i data-lucide="clock-3" class="w-3.5 h-3.5 text-purple-400"></i>${app.employmentType || 'Not specified'}
+                                        </span>
+                                        <span class="inline-flex items-center gap-1.5 rounded-full border border-dark-700 bg-dark-900 px-2.5 py-1">
+                                            <i data-lucide="map-pin" class="w-3.5 h-3.5 text-purple-400"></i>${Number.isFinite(app.distanceMiles) ? `${app.distanceMiles} ${app.distanceMiles === 1 ? 'mile' : 'miles'} away` : 'Distance not specified'}
+                                        </span>
+                                    </div>
+                                    <div class="w-full bg-dark-900 rounded-full h-2 mb-4">
+                                        <div class="bg-purple-600 h-2 rounded-full" style="width: ${comp}%"></div>
+                                    </div>
+                                    ${actions.length > 0 ? `
+                                        <p class="text-[10px] font-bold uppercase tracking-[0.16em] text-gray-500 mb-2">${app.status === 'Interviewing' ? 'Record interview outcome' : 'Next step'}</p>
+                                        <div class="grid grid-cols-1 gap-2 mb-3">
+                                            ${actions.map(action => `
+                                                <button onclick="updateStatus(${app.id}, '${action.status}')" class="w-full inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${action.classes}">
+                                                    <i data-lucide="${action.icon}" class="w-3.5 h-3.5"></i>${action.label}
+                                                </button>
+                                            `).join('')}
+                                        </div>
+                                    ` : `
+                                        <div class="mb-3 rounded-lg border border-dark-700 bg-dark-900/60 px-3 py-2 text-xs text-gray-400">
+                                            ${app.status === 'Job Offer' ? 'Interview completed with an offer.' : app.status === 'Rejected' && app.reachedInterview ? 'Interview completed with a rejection.' : app.status === 'Withdrawal' && app.reachedInterview ? 'Withdrawn during the interview process.' : 'Application closed.'}
+                                        </div>
+                                    `}
+                                    <div class="flex justify-end">
+                                        <button onclick="deleteApplication(${app.id})" aria-label="Delete ${app.role} application" class="text-gray-500 hover:text-red-400"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderAdd() {
+            return `
+                <div class="max-w-2xl mx-auto fade-in">
+                    <form onsubmit="handleAddJob(event)" class="bg-dark-800 p-8 rounded-xl border border-dark-700">
+                        <h2 class="text-2xl font-bold text-white mb-6">Log New Application</h2>
+                        <div class="space-y-4">
+                            <div>
+                                <label for="role" class="block text-sm font-medium text-gray-300 mb-1.5">Job title</label>
+                                <input id="role" type="text" name="role" required placeholder="e.g. Frontend Developer" class="w-full bg-dark-900 border border-dark-700 rounded p-2 text-white">
+                            </div>
+                            <div>
+                                <label for="company" class="block text-sm font-medium text-gray-300 mb-1.5">Company</label>
+                                <input id="company" type="text" name="company" required placeholder="e.g. TechCorp" class="w-full bg-dark-900 border border-dark-700 rounded p-2 text-white">
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="employmentType" class="block text-sm font-medium text-gray-300 mb-1.5">Employment type</label>
+                                    <select id="employmentType" name="employmentType" required class="w-full bg-dark-900 border border-dark-700 rounded p-2 text-white">
+                                        <option value="Full time">Full time</option>
+                                        <option value="Part time">Part time</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="distanceMiles" class="block text-sm font-medium text-gray-300 mb-1.5">Distance from you</label>
+                                    <div class="relative">
+                                        <input id="distanceMiles" type="number" name="distanceMiles" min="0" step="0.1" inputmode="decimal" placeholder="Optional" class="w-full bg-dark-900 border border-dark-700 rounded py-2 pl-2 pr-14 text-white">
+                                        <span class="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">miles</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="p-4 bg-purple-900/20 border border-purple-800 rounded space-y-5">
+                                <div>
+                                    <div class="flex items-center justify-between gap-4 mb-1">
+                                        <label for="qualScore" class="block text-sm font-semibold text-purple-200">Qualifications Score</label>
+                                        <output id="qualScoreValue" for="qualScore" class="text-sm font-bold text-white">5 / 10</output>
+                                    </div>
+                                    <p id="qualScoreHelp" class="text-xs leading-relaxed text-purple-300 mb-3">Rate how well your experience, education, certifications, and skills line up with the job's qualifications.</p>
+                                    <input id="qualScore" type="range" name="qualScore" min="1" max="10" value="5" aria-describedby="qualScoreHelp" oninput="document.getElementById('qualScoreValue').value = this.value + ' / 10'" class="w-full accent-purple-500">
+                                </div>
+                                <div>
+                                    <div class="flex items-center justify-between gap-4 mb-1">
+                                        <label for="intScore" class="block text-sm font-semibold text-purple-200">Interest Score</label>
+                                        <output id="intScoreValue" for="intScore" class="text-sm font-bold text-white">5 / 10</output>
+                                    </div>
+                                    <p id="intScoreHelp" class="text-xs leading-relaxed text-purple-300 mb-3">Rate the type of work, the expected hours, and how much the opportunity genuinely interests you.</p>
+                                    <input id="intScore" type="range" name="intScore" min="1" max="10" value="5" aria-describedby="intScoreHelp" oninput="document.getElementById('intScoreValue').value = this.value + ' / 10'" class="w-full accent-purple-500">
+                                </div>
+                            </div>
+                            <div>
+                                <label for="status" class="block text-sm font-medium text-gray-300 mb-1.5">Application status</label>
+                                <select id="status" name="status" class="w-full bg-dark-900 border border-dark-700 rounded p-2 text-white">
+                                    <option value="Applied">Applied</option>
+                                    <option value="Interviewing">Interviewing</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded font-bold">Save</button>
+                        </div>
+                    </form>
+                </div>
+            `;
+        }
+
+        // Main App Orchestrator
+        function renderApp() {
+            const contentDiv = document.getElementById('app-content');
+            contentDiv.innerHTML = activeTab === 'dashboard' ? renderDashboard() : activeTab === 'list' ? renderList() : renderAdd();
+            lucide.createIcons(); // Re-initialize icons for new DOM elements
+            if (activeTab === 'dashboard') setTimeout(drawChart, 50);
+        }
+
+        renderApp(); // Initial load
+    </script>
+</body>
+</html>
